@@ -257,8 +257,36 @@ char            pathname[MAX_PATH];     /* file path in host format  */
         else if (strcasecmp(tdfformat, "TEXT") == 0)
         {
             tdftab[filecount].format = 'T';
+            if (strcasecmp(tdfreckwd, "NL") == 0)
+            {
+                /* indicate that we are preserving newlines */
+                tdftab[filecount].flags |= OMATAPE_NL;
+            }
+            else if (strcasecmp(tdfreckwd, "V") == 0)
+            {
+                tdftab[filecount].flags |= OMATAPE_VART;
+            }
+            else if (strcasecmp(tdfreckwd, "F") == 0)
+            {
+                tdftab[filecount].flags |= OMATAPE_FIXEDT;
+                /* Check for valid fixed block length */
+                if (tdfblklen == NULL
+                    || sscanf(tdfblklen, "%u%c", &blklen, &c) != 1
+                    || blklen < 1 || blklen > MAX_BLKLEN)
+                {
+                    logmsg (_("HHCTA048E Invalid record size %s in "
+                            "line %d of file %s\n"),
+                            tdfblklen, stmt, dev->filename);
+                    free (tdftab);
+                    free (tdfbuf);
+                    return -1;
+                }
+                tdftab[filecount].blklen = blklen;
+            }
         }
-        else if (strcasecmp(tdfformat, "FIXED") == 0)
+        else if ((strcasecmp(tdfformat, "FIXED") == 0)
+                 || (strcasecmp(tdfformat, "RDWFIXN") == 0)
+                 || (strcasecmp(tdfformat, "RDWFIX") == 0))
         {
             /* Check for RECSIZE keyword */
             if (tdfreckwd == NULL
@@ -286,8 +314,36 @@ char            pathname[MAX_PATH];     /* file path in host format  */
             }
 
             /* Set format and block length in descriptor array */
-            tdftab[filecount].format = 'F';
+            
+            /* Present a RDW file as fixed-length records with
+               NUL-padding */
+            if (strcasecmp(tdfformat, "RDWFIXN") == 0)
+            {
+                tdftab[filecount].format = 'N';
+            }
+            /* Present a RDW file as fixed-length records with
+               space-padding */
+            else if (strcasecmp(tdfformat, "RDWFIX") == 0)
+            {
+                tdftab[filecount].format = 'O';
+            }
+            else
+            {
+                tdftab[filecount].format = 'F';
+            }
             tdftab[filecount].blklen = blklen;
+        }
+        /* present a RDW file as "undefined", by stripping
+           off the RDW and presenting the record as a single
+           block */
+        else if (strcasecmp(tdfformat, "RDWUND") == 0)
+        {
+            tdftab[filecount].format = 'P';
+        }
+        /* present a RDW file in its natural form - as a V dataset */
+        else if (strcasecmp(tdfformat, "RDWVAR") == 0)
+        {
+            tdftab[filecount].format = 'Q';
         }
         else
         {
@@ -706,9 +762,40 @@ BYTE            c;                      /* Character work area       */
         /* Ignore carriage return character */
         if (c == '\r') continue;
 
-        /* Exit if newline character */
-        if (c == '\n') break;
-
+        /* if we're not passing through newlines, exit now.
+           Unless we've got an empty line, in which case, send
+           through a single space. */
+        if (!(omadesc->flags & OMATAPE_NL))
+        {
+            if (c == '\n')
+            {
+                if (pos == 0)
+                {
+                    if (buf != NULL)
+                        buf[pos] = host_to_guest(' ');
+                    pos++;
+                }
+                if ((omadesc->flags & OMATAPE_VART)
+                    && (buf != NULL))
+                {
+                    memmove(buf + 8, buf, pos);
+                    buf[0] = (pos + 8) >> 8;
+                    buf[1] = (pos + 8) & 0xff;
+                    buf[2] = buf[3] = '\0';
+                    buf[4] = (pos + 4) >> 8;
+                    buf[5] = (pos + 4) & 0xff;
+                    buf[6] = buf[7] = '\0';
+                    pos += 8;
+                }
+                if ((omadesc->flags & OMATAPE_FIXEDT)
+                    && (buf != NULL))
+                {
+                    memset(buf + pos, 0x40, omadesc->blklen - pos);
+                    pos = omadesc->blklen;
+                }
+                break;
+            }
+        }
         /* Ignore characters in excess of I/O buffer length */
         if (pos >= MAX_BLKLEN) continue;
 
@@ -718,6 +805,10 @@ BYTE            c;                      /* Character work area       */
 
         /* Count characters copied or skipped */
         pos++;
+
+        /* if we're passing through newline characters, now is the
+           point at which we will break */
+        if (c == '\n') break;
 
     } /* end for(num) */
 
@@ -778,6 +869,151 @@ BYTE            c;                      /* Character work area       */
 } /* end function read_omatext */
 
 /*-------------------------------------------------------------------*/
+/* Read a block from an OMA tape file in rdw format                  */
+/*                                                                   */
+/* If successful, return value is block length read.                 */
+/* If a tapemark was read, the file is closed, the current file      */
+/* number in the device block is incremented so that the next file   */
+/* will be opened by the next CCW, and the return value is zero.     */
+/* If error, return value is -1 and unitstat is set to CE+DE+UC      */
+/* A NULL buf can be provided to skip the data                       */
+/*-------------------------------------------------------------------*/
+int read_omardw (DEVBLK *dev, OMATAPE_DESC *omadesc,
+                        BYTE *buf, BYTE *unitstat,BYTE code)
+{
+off_t           rcoff;                  /* Return code from lseek()  */
+int             blklen;                 /* Block length              */
+long            blkpos;                 /* Offset of block in file   */
+BYTE            rdw[4];                 /* record descriptor word    */
+int             rdwlen;                 /* converted to integer      */
+int             extra = 0;
+
+    /* Initialize current block position */
+    blkpos = dev->nxtblkpos;
+
+    /* Seek to new current block position */
+    rcoff = lseek (dev->fd, blkpos, SEEK_SET);
+    if (rcoff < 0)
+    {
+        /* Handle seek error condition */
+        logmsg (_("HHCTA058E Error seeking to offset "I32_FMTX" "
+                "in file %s: %s\n"),
+                blkpos, omadesc->filename, strerror(errno));
+
+        /* Set unit check with equipment check */
+        build_senseX(TAPE_BSENSE_LOCATEERR,dev,unitstat,code);
+        return -1;
+    }
+
+    /* Read rdw */
+    blklen = read (dev->fd, rdw, 4);
+
+    /* Handle read error condition */
+    if (blklen < 0)
+    {
+        logmsg (_("HHCTA059E Error reading data block "
+                "at offset "I32_FMTX" in file %s: %s\n"),
+                blkpos, omadesc->filename,
+                strerror(errno));
+
+        build_senseX(TAPE_BSENSE_READFAIL,dev,unitstat,code);
+        return -1;
+    }
+
+    /* At end of file return zero to indicate tapemark */
+    /* Also if we read a file with NUL-padding */
+    if ((blklen < 4) || ((rdw[0] == 0) && (rdw[1] == 0)))
+    {
+        close (dev->fd);
+        dev->fd = -1;
+        dev->curfilen++;
+        dev->nxtblkpos = 0;
+        dev->prvblkpos = -1;
+        return 0;
+    }
+
+    rdwlen = (rdw[0] << 8) | rdw[1];
+    
+    /* if record is too long, silently truncate */
+    if ((omadesc->blklen != 0) && (rdwlen > (omadesc->blklen + 4)))
+    {
+        extra = rdwlen - omadesc->blklen - 4;
+        rdwlen = omadesc->blklen + 4;
+    }
+    if (buf != NULL)
+    {
+        blklen = read (dev->fd, buf, rdwlen - 4);
+    }
+    /* if we're not reading data, or we have extra bytes to skip */
+    if ((buf == NULL) || (extra != 0))
+    {
+        /* Seek to new current block position */
+        rcoff = lseek (dev->fd, blkpos + rdwlen, SEEK_SET);
+        if (rcoff < 0)
+        {
+            /* Handle seek error condition */
+            logmsg (_("HHCTA058E Error seeking to offset "I32_FMTX" "
+                    "in file %s: %s\n"),
+                    blkpos, omadesc->filename, strerror(errno));
+
+            /* Set unit check with equipment check */
+            build_senseX(TAPE_BSENSE_LOCATEERR,dev,unitstat,code);
+            return -1;
+        }
+        /* assume whole block has been read */        
+        if (extra == 0)
+        {
+            blklen = rdwlen - 4;
+        }
+    }
+
+    /* Handle read error condition */
+    if (blklen != (rdwlen - 4))
+    {
+        logmsg (_("HHCTA059E Error reading data block "
+                "at offset "I32_FMTX" in file %s: %s\n"),
+                blkpos, omadesc->filename,
+                strerror(errno));
+
+        build_senseX(TAPE_BSENSE_READFAIL,dev,unitstat,code);
+        return -1;
+    }
+
+    /* Calculate the offsets of the next and previous blocks */
+    dev->nxtblkpos = blkpos + rdwlen + extra;
+    dev->prvblkpos = blkpos;
+
+    if (buf != NULL)
+    {
+        /* note - format 'P' requires no adjustment */
+        if (omadesc->format == 'N')
+        {
+            memset(buf + blklen, '\0', omadesc->blklen - blklen);
+            blklen = omadesc->blklen;
+        }
+        else if (omadesc->format == 'O')
+        {
+            memset(buf + blklen, 0x40, omadesc->blklen - blklen);
+            blklen = omadesc->blklen;
+        }
+        else if (omadesc->format == 'Q')
+        {
+            memmove(buf + 8, buf, blklen);
+            memcpy(buf + 4, rdw, 4);
+            /* insert BDW */
+            buf[0] = (rdwlen + 4) >> 8;
+            buf[1] = (rdwlen + 4) & 0xff;
+            buf[2] = buf[3] = '\0';
+            blklen = rdwlen + 4;
+        }
+    }
+
+    /* Return block length, or zero to indicate tapemark */
+    return blklen;
+
+} /* end function read_omardw */
+
+/*-------------------------------------------------------------------*/
 /* Read a block from an OMA - Selection of format done here          */
 /*                                                                   */
 /* If successful, return value is block length read.                 */
@@ -808,6 +1044,12 @@ OMATAPE_DESC *omadesc;
         break;
     case 'T':
         len = read_omatext (dev, omadesc, buf, unitstat,code);
+        break;
+    case 'N':
+    case 'O':
+    case 'P':
+    case 'Q':
+        len = read_omardw (dev, omadesc, buf, unitstat,code);
         break;
     case 'X':
         len=0;
@@ -999,6 +1241,12 @@ OMATAPE_DESC   *omadesc;                /* -> OMA descriptor entry   */
         break;
     case 'T':
         rc = read_omatext (dev, omadesc, NULL, unitstat,code);
+        break;
+    case 'N':
+    case 'O':
+    case 'P':
+    case 'Q':
+        rc = read_omardw (dev, omadesc, NULL, unitstat,code);
         break;
     } /* end switch(omadesc->format) */
 
