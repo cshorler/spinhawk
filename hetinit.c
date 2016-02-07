@@ -4,7 +4,7 @@
 /*
 || ----------------------------------------------------------------------------
 ||
-|| HETINIT.C    (c) Copyright Leland Lucius, 2000-2009
+|| HETINIT.C    (c) Copyright Leland Lucius, 2000-2007
 ||              Released under terms of the Q Public License.
 ||
 || Creates IEHINITT or NL format Hercules Emulated Tapes.
@@ -67,7 +67,17 @@ main( int argc, char *argv[] )
     char *o_owner;
     char *o_volser;
 
-    INITIALIZE_UTILITY("hetinit");
+    set_codepage( NULL );
+
+#ifdef EXTERNALGUI
+    if (argc >= 1 && strncmp(argv[argc-1],"EXTERNALGUI",11) == 0)
+    {
+        extgui = 1;
+        argc--;
+        setvbuf(stderr, NULL, _IONBF, 0);
+        setvbuf(stdout, NULL, _IONBF, 0);
+    }
+#endif /*EXTERNALGUI*/
 
     hetb = NULL;
 
