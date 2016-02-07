@@ -253,10 +253,22 @@ typedef struct _OMATAPE_DESC
     int     fd;                         /* File Descriptor for file  */
     char    filename[256];              /* Filename of data file     */
     char    format;                     /* H=HEADERS,T=TEXT,F=FIXED,X=Tape Mark */
-    BYTE    resv;                       /* Reserved for alignment    */
+                                        /* U - reserved for undefined */
+                                        /* V - ambiguous, don't use  */
+                                        /* N - RDW converted to F with NUL padding */
+                                        /* O - RDW converted to F    */
+                                        /* P - RDW converted to U    */
+                                        /* Q - RDW converted to V    */
+                                        /* R - ambiguous, don't use  */
+                                        /* S - reserved for spanned  */
+    BYTE    flags;                      /* flags (see below)         */
     U16     blklen;                     /* Fixed block length        */
 }
 OMATAPE_DESC;
+
+#define OMATAPE_NL                0x80  /* Preserve newlines         */
+#define OMATAPE_FIXEDT            0x40  /* Fixed text                */
+#define OMATAPE_VART              0x20  /* Variable text             */
 
 /*-------------------------------------------------------------------*/
 /* Structure definition for Flex FakeTape block headers              */
@@ -524,6 +536,7 @@ extern int  fsb_omafixed       (DEVBLK *dev, OMATAPE_DESC *omadesc,            B
 extern int  read_omaheaders    (DEVBLK *dev, OMATAPE_DESC *omadesc, BYTE *buf, BYTE *unitstat, BYTE code);
 extern int  read_omafixed      (DEVBLK *dev, OMATAPE_DESC *omadesc, BYTE *buf, BYTE *unitstat, BYTE code);
 extern int  read_omatext       (DEVBLK *dev, OMATAPE_DESC *omadesc, BYTE *buf, BYTE *unitstat, BYTE code);
+extern int  read_omardw        (DEVBLK *dev, OMATAPE_DESC *omadesc, BYTE *buf, BYTE *unitstat, BYTE code);
 extern int  read_omatape       (DEVBLK *dev,                        BYTE *buf, BYTE *unitstat, BYTE code);
 extern int  readhdr_omaheaders (DEVBLK *dev, OMATAPE_DESC *omadesc,
                                              long blkpos, S32 *pcurblkl,
