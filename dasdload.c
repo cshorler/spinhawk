@@ -703,14 +703,30 @@ int             datalen;                /* Data length               */
 int             maxtrks = 1;            /* Maximum track count       */
 DATABLK        *datablk;                /* -> data block             */
 BYTE            buf[32768];             /* Buffer for data block     */
+int             separate = 0;           /* Is load separate file?    */
+
+    if ((iplfnm != NULL) && (strcmp(iplfnm, "separate") == 0))
+    {
+        separate = 1;
+    }
 
     /* For 2311 the IPL text will not fit on track 0 record 4,
        so adjust the IPL2 so that it loads from track 1 record 1 */
-    if (devtype == 0x2311)
+    /* Ditto for sepearate loaders */
+    if ((devtype == 0x2311) || separate)
     {
         memcpy (ipl2data + 32, "\x00\x00\x00\x00\x00\x01", 6);
         memcpy (ipl2data + 38, "\x00\x00\x00\x01\x01", 5);
         maxtrks = 2;
+    }
+
+    if (separate)
+    {
+        /* large binary files need more room. This will put the
+           CCWs above the 1 MB mark, which is hopefully
+           enough for now. */
+        iplccw1[1] = iplccw2[1] = ipl2data[1] = ipl2data[9] 
+            = ipl2data[17] = 0x10;
     }
 
     /* Read track 0 */
@@ -786,7 +802,7 @@ BYTE            buf[32768];             /* Buffer for data block     */
     if (rc < 0) return -1;
 
     /* Build the IPL text from the object file */
-    if (iplfnm != NULL)
+    if (iplfnm != NULL && !separate)
     {
         memset (buf, 0, sizeof(buf));
         datalen = read_ipl_text (iplfnm, buf+12, sizeof(buf)-12);
@@ -1009,7 +1025,7 @@ time_t          timeval;                /* Current time value        */
     f1dscb->ds1volsq[0] = 0;
     f1dscb->ds1volsq[1] = 1;
     f1dscb->ds1credt[0] = tmptr->tm_year;
-    f1dscb->ds1credt[1] = (tmptr->tm_yday >> 8) & 0xFF;
+    f1dscb->ds1credt[1] = (++tmptr->tm_yday >> 8) & 0xFF;
     f1dscb->ds1credt[2] = tmptr->tm_yday & 0xFF;
     f1dscb->ds1expdt[0] = 0;
     f1dscb->ds1expdt[1] = 0;
@@ -3477,11 +3493,15 @@ char            pathname[MAX_PATH];     /* sfname in host path format*/
         XMERRF ("HHCDL121E SEQ dsorg must be PS or DA: dsorg=0x%2.2x\n",dsorg);
         return -1;
     }
-    if (recfm != RECFM_FORMAT_F && recfm != (RECFM_FORMAT_F|RECFM_BLOCKED))
+    if (recfm != RECFM_FORMAT_F 
+        && recfm != (RECFM_FORMAT_F|RECFM_BLOCKED)
+        && recfm != RECFM_FORMAT_U)
     {
-        XMERRF ("HHCDL122E SEQ recfm must be F or FB: recfm=0x%2.2x\n",recfm);
+        XMERRF ("HHCDL122E SEQ recfm must be F or FB or U: "
+                "recfm=0x%2.2x\n",recfm);
         return -1;
     }
+    if ((lrecl == 0) && (recfm == RECFM_FORMAT_U)) lrecl = 1;
     if (blksz == 0) blksz = lrecl;
     if (lrecl == 0) lrecl = blksz;
     if (lrecl == 0 || blksz % lrecl != 0
