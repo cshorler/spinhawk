@@ -175,7 +175,7 @@ void delayed_exit (int exit_code)
 
 
 /* storage configuration routine. To be moved *JJ */
-static void config_storage(unsigned mainsize, unsigned xpndsize)
+static void ARCH_DEP(config_storage) (unsigned mainsize, unsigned xpndsize)
 {
 int off;
 
@@ -213,6 +213,15 @@ int off;
                 strerror(errno));
         delayed_exit(1);
     }
+
+#if defined(_380) && defined(VSE_UNPATCHED)
+    /* force DOS/VS down to 15 MB to avoid a loop */
+    if (sysblk.vse_special && mainsize > 15)
+    {
+        sysblk.vse_real = sysblk.mainsize;
+        sysblk.mainsize = 15 * 1024 * 1024ULL;
+    }
+#endif
 
     /* Initial power-on reset for main storage */
     storage_clear();
@@ -771,7 +780,9 @@ char    pathname[MAX_PATH];             /* file path in host format  */
     sysepoch = 1900;
     yroffset = 0;
     tzoffset = 0;
-#if defined(_390)
+#if defined(_380)
+    sysblk.arch_mode = ARCH_380;
+#elif defined(_390)
     sysblk.arch_mode = ARCH_390;
 #else
     sysblk.arch_mode = ARCH_370;
