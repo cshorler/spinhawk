@@ -1209,7 +1209,7 @@ BYTE    c;                              /* Character work area       */
 
 /*
 static char *herclogo[]={
-    " HHH          HHH   The S/370, ESA/390 and z/Architecture",
+    " HHH          HHH   The S/370, S/380, ESA/390 and z/Architecture",
     " HHH          HHH                 Emulator",
     " HHH          HHH",
     " HHH          HHH  EEEE RRR   CCC U  U L    EEEE  SSS",
@@ -1270,7 +1270,7 @@ static char *herclogo[]={
 "@ALIGN LEFT",
 "",
 "",
-"           HHH          HHH   The S/370, ESA/390 and z/Architecture",
+"           HHH          HHH   The S/370, S/380, ESA/390 and z/Architecture",
 "           HHH          HHH                 Emulator",
 "           HHH          HHH",
 "           HHH          HHH  EEEE RRR   CCC U  U L    EEEE  SSS",
