@@ -583,7 +583,14 @@ BYTE    *ipsav;                         /* save for ip               */
         regs->GR_L(r1) = PSW_IA24(regs, 2);
 
     /* Set mode and branch to address specified by R2 operand */
-    if ( r2 != 0 )
+    if ( r2 != 0
+#if defined(_380)
+/* if a S/370 machine, don't allow them to change addressing
+   modes, because that has implications for the memory access
+   routines */
+         && (sysblk.s380 || (regs->arch_mode != ARCH_370))
+#endif
+       )
     {
         SET_ADDRESSING_MODE(regs, newia);
         SUCCESSFUL_BRANCH(regs, newia, 2);
@@ -640,7 +647,14 @@ VADR    newia;                          /* New instruction address   */
     }
 
     /* Set mode and branch to address specified by R2 operand */
-    if ( r2 != 0 )
+    if ( r2 != 0
+#if defined(_380)
+/* if a S/370 machine, don't allow them to change addressing
+   modes, because that has implications for the memory access
+   routines */
+         && (sysblk.s380 || (regs->arch_mode != ARCH_370))
+#endif
+       )
     {
         SET_ADDRESSING_MODE(regs, newia);
         SUCCESSFUL_BRANCH(regs, newia, 2);
