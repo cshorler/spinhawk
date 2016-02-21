@@ -1327,6 +1327,72 @@ RADR    px;                             /* prefix                    */
 int     rc;                             /* Return code               */
 
     RR_SVC(inst, regs, i);
+
+#if defined(_380)
+    /* If this is DOS/VS (ie VSE/380) then if we are in 31-bit
+       mode, we should handle the ATL memory request and free.
+       Due to the current technical limitation (only one request
+       can be made), we should only do the intercept if at least
+       16 MB was requested - after all, it was going to fail 
+       anyway otherwise. */
+    if (sysblk.vse_special && regs->psw.amode)
+    {
+        /* GETVIS */
+        if (i == 61)
+        {
+            /* if request is at least 16 MB */
+            if (regs->GR_L(0) >= 0x01000000)
+            {
+                regs->GR_L(1) = 0x04100000;
+                regs->GR_L(15) = 0;
+                regs->psw.cc = 0;
+                return;
+            }
+        }
+        /* FREEVIS */
+        else if (i == 62)
+        {
+            /* see if it is an ATL address */
+            if ((regs->GR_L(1) & 0x7f000000) != 0)
+            {
+                regs->GR_L(15) = 0;
+                regs->psw.cc = 0;
+                return;
+            }
+        }
+    }
+
+    /* If user has requested special MVS intercepts, then we need
+       to obtain ATL storage when they do GETMAIN, and free it
+       with FREEMAIN. For now we have a simple one-request-at-a-time
+       method for handling that. We simply return a pointer to the
+       65 MB location on the assumption that they have allocated
+       sufficient memory prior. */
+    if (sysblk.mvs_special && (i == 120) && regs->psw.amode)
+    {
+        if (regs->GR_L(1) == 0) /* getmain */
+        {
+            if (regs->GR_L(0) >= 0x01000000)
+            {
+                regs->GR_L(1) = 0x04100000;
+                regs->GR_L(15) = 0;
+                regs->psw.cc = 0;
+                return;
+            }
+        }
+        else /* freemain */
+        {
+            /* see if it is an ATL address */
+            if ((regs->GR_L(1) & 0x7f000000) != 0)
+            {
+                regs->GR_L(15) = 0;
+                regs->psw.cc = 0;
+                return;
+            }
+        }
+    }
+#endif
+
 #if defined(FEATURE_ECPSVM)
     if(ecpsvm_dosvc(regs,i)==0)
     {
