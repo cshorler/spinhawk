@@ -2334,6 +2334,7 @@ int d2,b2;
 
 /* Gabor Hoffer (performance option) */
 DLL_EXPORT zz_func s370_opcode_table[256];
+static zz_func s370_opcode_01xx[256];
 static zz_func s370_opcode_a4xx[256];
 static zz_func s370_opcode_a5xx[256];
 static zz_func s370_opcode_a6xx[256];
@@ -2399,6 +2400,7 @@ int i;
     {
 #if defined(_370)
         s370_opcode_table[i] = opcode_table[i][ARCH_370];
+        s370_opcode_01xx [i] = opcode_01xx [i][ARCH_370];
         s370_opcode_a4xx [i] = v_opcode_a4xx [i][ARCH_370];
         s370_opcode_a5xx [i] = v_opcode_a5xx [i][ARCH_370];
         s370_opcode_a6xx [i] = v_opcode_a6xx [i][ARCH_370];
@@ -2468,6 +2470,7 @@ void set_opcode_pointers(REGS *regs)
 #if defined(_370)
     memcpy(regs->s370_opcode_table, s370_opcode_table,
            sizeof(s370_opcode_table));
+    regs->s370_opcode_01xx = s370_opcode_01xx;
     regs->s370_opcode_a4xx = s370_opcode_a4xx;
     regs->s370_opcode_a5xx = s370_opcode_a5xx;
     regs->s370_opcode_a6xx = s370_opcode_a6xx;
@@ -2588,8 +2591,8 @@ DLL_EXPORT zz_func opcode_table[256][GEN_MAXARCH] = {
  /*08*/   GENx370x___x___ (set_storage_key,RR,"SSK"),
  /*09*/   GENx370x___x___ (insert_storage_key,RR,"ISK"),
  /*0A*/   GENx370x390x900 (supervisor_call,RR_SVC,"SVC"),
- /*0B*/   GENx___x390x900 (branch_and_set_mode,RR,"BSM"),
- /*0C*/   GENx___x390x900 (branch_and_save_and_set_mode,RR,"BASSM"),
+ /*0B*/   GENx380x390x900 (branch_and_set_mode,RR,"BSM"),
+ /*0C*/   GENx380x390x900 (branch_and_save_and_set_mode,RR,"BASSM"),
  /*0D*/   GENx370x390x900 (branch_and_save_register,RR,"BASR"),
  /*0E*/   GENx370x390x900 (move_long,RR,"MVCL"),
  /*0F*/   GENx370x390x900 (compare_logical_character_long,RR,"CLCL"),
