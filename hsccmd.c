@@ -6492,6 +6492,15 @@ int archmode_cmd(int argc, char *argv[], char *cmdline)
                       "architecture\n") );
             return -1;
         }
+#if defined(_380)
+    if (!strcasecmp (argv[1], arch_name[ARCH_380]))
+    {
+        sysblk.arch_mode = ARCH_380;
+        sysblk.maxcpu = sysblk.numcpu;
+        sysblk.s380 = 1;
+    }
+    else
+#endif
 #if defined(_370)
     if (!strcasecmp (argv[1], arch_name[ARCH_370]))
     {
