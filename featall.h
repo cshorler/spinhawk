@@ -6,6 +6,7 @@
 /*   All existing features MUST be #undef-ed here.                   */
 /*-------------------------------------------------------------------*/
 #define OPTION_370_MODE                 /* Generate S/370 support    */
+#define OPTION_380_MODE                 /* Generate S/370 31 bit     */
 #define OPTION_390_MODE                 /* Generate ESA/390 support  */
 #define OPTION_900_MODE                 /* Generate ESAME support    */
 #define OPTION_LPP_RESTRICT             /* Disable Licensed Software */

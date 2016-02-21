@@ -325,6 +325,7 @@
 #endif
 
 #if !defined(OPTION_370_MODE) \
+  && !defined(OPTION_380_MODE) \
   && !defined(OPTION_390_MODE) \
   && !defined(OPTION_900_MODE)
  #error No Architecture mode
@@ -335,14 +336,28 @@
  #define ARCH_370 0
 #endif
 
+#if defined(OPTION_380_MODE)
+ #define _380
+ #if !defined(_ARCHMODE1)
+  #define _ARCHMODE1 380
+  #define ARCH_380 0
+ #else
+  #define _ARCHMODE2 380
+  #define ARCH_380 1
+ #endif
+#endif
+
 #if defined(OPTION_390_MODE)
  #define _390
  #if !defined(_ARCHMODE1)
   #define _ARCHMODE1 390
   #define ARCH_390 0
- #else
+ #elif !defined(_ARCHMODE2)
   #define _ARCHMODE2 390
   #define ARCH_390 1
+ #else
+  #define _ARCHMODE3 390
+  #define ARCH_390 2
  #endif
 #endif
 
@@ -351,14 +366,20 @@
  #if !defined(_ARCHMODE2)
   #define _ARCHMODE2 900
   #define ARCH_900 1
- #else
+ #elif !defined(_ARCHMODE3)
   #define _ARCHMODE3 900
   #define ARCH_900 2
+ #else
+  #define _ARCHMODE4 900
+  #define ARCH_900 3
  #endif
 #endif
 
 #if !defined(ARCH_370)
  #define ARCH_370 -1
+#endif
+#if !defined(ARCH_380)
+ #define ARCH_380 -1
 #endif
 #if !defined(ARCH_390)
  #define ARCH_390 -1
@@ -367,7 +388,9 @@
  #define ARCH_900 -1
 #endif
 
-#if defined(_ARCHMODE3)
+#if defined(_ARCHMODE4)
+ #define GEN_MAXARCH    4+2
+#elif defined(_ARCHMODE3)
  #define GEN_MAXARCH    3+2
 #elif defined(_ARCHMODE2)
  #define GEN_MAXARCH    2+2
