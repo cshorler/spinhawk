@@ -827,7 +827,13 @@ int     tlbix = TLBIX(vaddr);           /* TLB entry index           */
 /*-----------------------------------*/
 U32     stl;                            /* Segment table length      */
 RADR    ste;                            /* Segment table entry       */
+#if defined(_380)
+int     seg1m;
+int     use_xa = 0;
+RADR    pte;                            /* Page table entry          */
+#else
 U16     pte;                            /* Page table entry          */
+#endif
 U32     ptl;                            /* Page table length         */
 
     regs->dat.private = regs->dat.protect = 0;
@@ -842,6 +848,107 @@ U32     ptl;                            /* Page table length         */
        (((regs->CR(0) & CR0_SEG_SIZE) != CR0_SEG_SZ_64K) &&
        ((regs->CR(0) & CR0_SEG_SIZE) != CR0_SEG_SZ_1M)))
        goto tran_spec_excp;
+
+#if defined(_380)
+    /* if CR0.10 signifies XA, then we set XA, and ignore CR13 */
+    if (((regs->CR(0) & CR0_XA) == CR0_XA) && sysblk.s380)
+    {
+        use_xa = 1;
+        seg1m = (regs->CR(0) & CR0_SEG_SIZE) == CR0_SEG_SZ_1M;
+    }
+
+    /* if the AMODE is 31-bit and CR13 is non-zero and the virtual
+       address is 16 MB or above, then we are operating in split
+       DAT mode, so switch the asd to CR13 and use XA - above the
+       line access is always XA in S/380 */
+    else if ((regs)->psw.amode && sysblk.s380 && ((regs)->CR(13) != 0)
+       && (((vaddr) & 0x7f000000) != 0))
+    {
+        use_xa = 1;
+        regs->dat.asd = regs->CR(13);
+        seg1m = 1;
+    }
+
+    /* anything done via an XA DAT should not affect the TLB
+       because we don't have that sophistication yet. */
+    if (use_xa)
+    {
+        /* Calculate the real address of the segment table entry */
+        sto = regs->dat.asd & STD_STO;
+        stl = regs->dat.asd & STD_STL;
+        sto += seg1m ?
+            ((vaddr & 0x7FF00000) >> 18) :
+            ((vaddr & 0x7FFF0000) >> 14);
+
+        /* Check that virtual address is within the segment table */
+        if ((!seg1m && (vaddr >> 20) > stl) 
+            || (seg1m && (vaddr >> 24) > stl))
+            goto seg_tran_length;
+
+        /* Generate addressing exception if outside real storage */
+        if (sto > regs->mainlim)
+            goto address_excp;
+
+        /* Fetch segment table entry from real storage.  All bytes
+           must be fetched concurrently as observed by other CPUs */
+        sto = APPLY_PREFIXING (sto, regs->PX);
+        ste = ARCH_DEP(fetch_fullword_absolute) (sto, regs);
+
+        /* Generate segment translation exception if segment invalid */
+        if (ste & SEGTAB_INVALID)
+            goto seg_tran_invalid;
+
+        /* Check that all the reserved bits in the STE are zero */
+        if (ste & SEGTAB_RESV)
+            goto tran_spec_excp;
+
+        /* If the segment table origin register indicates a private
+           address space then STE must not indicate a common segment */
+        if (regs->dat.private && (ste & (SEGTAB_COMMON)))
+            goto tran_spec_excp;
+
+        /* Isolate page table origin and length */
+        pto = ste & SEGTAB_PTO;
+        ptl = ste & SEGTAB_PTL;
+
+        /* [3.11.3.4] Page table lookup */
+
+        /* Calculate the real address of the page table entry */
+        pto += seg1m ?
+            ((vaddr & 0x000FF000) >> 10) :
+            ((vaddr & 0x0000F000) >> 10);
+
+        /* Check that the virtual address is within the page table */
+        if (seg1m &&
+           (((vaddr & 0x000F0000) >> 16) > ptl))
+            /* no need to check 64K segments, as every one of
+               the 16 values fits within the 16 minimum */
+            goto page_tran_length;
+
+        /* Generate addressing exception if outside real storage */
+        if (pto > regs->mainlim)
+            goto address_excp;
+
+        /* Fetch the page table entry from real storage.  All bytes
+           must be fetched concurrently as observed by other CPUs */
+        pto = APPLY_PREFIXING (pto, regs->PX);
+        pte = ARCH_DEP(fetch_fullword_absolute) (pto, regs);
+
+        /* Generate page translation exception if page invalid */
+        if (pte & PAGETAB_INVALID)
+            goto page_tran_invalid;
+
+        /* Check that all the reserved bits in the PTE are zero */
+        if (pte & PAGETAB_RESV)
+            goto tran_spec_excp;
+
+        /* Set the protection indicator if page protection is active */
+        if (pte & PAGETAB_PROT)
+            regs->dat.protect |= 1;
+
+    } /* end else if XA DAT */
+    else
+#endif
 
     /* Look up the address in the TLB */
     if (   ((vaddr & TLBID_PAGEMASK) | regs->tlbID) == regs->tlb.TLB_VADDR(tlbix)
@@ -964,6 +1071,17 @@ U32     ptl;                            /* Page table length         */
         }
     } /* end if(!TLB) */
 
+#if defined(_380)
+    if (use_xa)
+    {
+    /* [3.11.3.5] Combine the page frame real address with the byte
+       index of the virtual address to form the real address */
+        regs->dat.raddr = (pte & PAGETAB_PFRA) | (vaddr & 0xFFF);
+        regs->dat.rpfra = (pte & PAGETAB_PFRA);
+    }
+    else
+#endif
+    {
     /* Combine the page frame real address with the byte
        index of the virtual address to form the real address */
     regs->dat.raddr = ((regs->CR(0) & CR0_PAGE_SIZE) == CR0_PAGE_SZ_4K) ?
@@ -974,6 +1092,8 @@ U32     ptl;                            /* Page table length         */
         (((U32)pte & PAGETAB_PFRA_2K) << 8) | (vaddr & 0x7FF);
 
     regs->dat.rpfra = regs->dat.raddr & PAGEFRAME_PAGEMASK;
+    }
+
 #endif /*!defined(FEATURE_S390_DAT) && !defined(FEATURE_ESAME)*/
 
 #if defined(FEATURE_S390_DAT)
@@ -2331,11 +2451,19 @@ int     ix = TLBIX(addr);               /* TLB index                 */
         /* Set the reference bit in the storage key */
         *regs->dat.storkey |= STORKEY_REF;
 
+#if defined(_380)
+        if (!(acctype & ACC_NOTLB))
+        {
+#endif
         /* Update accelerated lookup TLB fields */
         regs->tlb.storkey[ix]    = regs->dat.storkey;
         regs->tlb.skey[ix]       = *regs->dat.storkey & STORKEY_KEY;
         regs->tlb.acc[ix]        = ACC_READ;
         regs->tlb.main[ix]       = NEW_MAINADDR (regs, addr, apfra);
+
+#if defined(_380)
+        }
+#endif
 
     }
     else /* if(acctype & (ACC_WRITE|ACC_CHECK)) */
@@ -2353,6 +2481,10 @@ int     ix = TLBIX(addr);               /* TLB index                 */
         if (acctype & ACC_WRITE)
             *regs->dat.storkey |= (STORKEY_REF | STORKEY_CHANGE);
 
+#if defined(_380)
+        if (!(acctype & ACC_NOTLB))
+        {
+#endif
         /* Update accelerated lookup TLB fields */
         regs->tlb.storkey[ix] = regs->dat.storkey;
         regs->tlb.skey[ix]    = *regs->dat.storkey & STORKEY_KEY;
@@ -2360,6 +2492,10 @@ int     ix = TLBIX(addr);               /* TLB index                 */
                               ? (ACC_READ|ACC_CHECK|acctype)
                               :  ACC_READ;
         regs->tlb.main[ix]    = NEW_MAINADDR (regs, addr, apfra);
+
+#if defined(_380)
+        }
+#endif
 
 #if defined(FEATURE_PER)
         if (EN_IC_PER_SA(regs))
