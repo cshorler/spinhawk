@@ -123,8 +123,13 @@ s370_ ## _name
 
 #define AMASK   AMASK_L
 
+#if defined(_380)
+#define ADDRESS_MAXWRAP(_register_context) \
+    ((_register_context)->psw.AMASK)
+#else
 #define ADDRESS_MAXWRAP(_register_context) \
     (AMASK24)
+#endif
 
 #define ADDRESS_MAXWRAP_E(_register_context) \
     (AMASK31)
@@ -202,6 +207,10 @@ s370_ ## _name
 #define TLBID_PAGEMASK  0x00E00000
 #define TLBID_BYTEMASK  0x001FFFFF
 #define ASD_PRIVATE   SEGTAB_370_CMN
+
+#define CR12_BRTRACE    S_CR12_BRTRACE
+#define CR12_TRACEEA    S_CR12_TRACEEA
+#define CHM_GPR2_RESV   S_CHM_GPR2_RESV
 
 #elif __GEN_ARCH == 390
 
@@ -784,8 +793,50 @@ do { \
  )
 
 /* Old style accelerated lookup (without length) */
-#define MADDR(_addr, _arn, _regs, _acctype, _akey) \
+#define MADDR_STD(_addr, _arn, _regs, _acctype, _akey) \
     MADDRL( (_addr), 1, (_arn), (_regs), (_acctype), (_akey))
+
+#if defined(_380)
+
+#if VSE_UNPATCHED
+#define VSE_SPECIAL(_addr) \
+    (sysblk.vse_special && (((_addr) & 0x7fffffff) < sysblk.vse_real))
+#else
+#define VSE_SPECIAL(_addr) 0
+#endif
+
+#define MADDR_S380(_addr, _arn, _regs, _acctype, _akey) \
+(   ((_regs)->psw.amode && sysblk.s380 \
+      && (((_addr) & 0x7f000000) != 0)) \
+    ? \
+ ( ((_regs)->CR(13) == 0) ? \
+ ( \
+    ( \
+      (((_addr) & 0x7fffffff) < sysblk.mainsize || VSE_SPECIAL(_addr)) ? \
+           ((_regs)->dat.storkey = &STORAGE_KEY((_addr) & 0x7fffffff, \
+                                                (_regs)), \
+            (_regs)->mainstor + ((_addr) & 0x7fffffff)) : \
+           ( \
+            (_regs)->program_interrupt ((_regs), \
+                                        PGM_PROTECTION_EXCEPTION), \
+            (BYTE *)0) \
+    ) \
+ ) : /* if CR13 is set, split DAT is being used, so don't use the TLB */ \
+     ARCH_DEP(logical_to_main) ((_addr), (_arn), (_regs), \
+              ((_acctype) | ACC_NOTLB), (_akey)) \
+ ) \
+    : \
+    MADDR_STD(_addr, _arn, _regs, _acctype, _akey) \
+)
+
+#endif
+
+#if defined(_380) && !defined(FEATURE_S390_DAT) \
+    && !defined(FEATURE_ESAME)
+#define MADDR MADDR_S380
+#else
+#define MADDR MADDR_STD
+#endif
 
 /*
  * PER Successful Branch
