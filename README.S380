@@ -1,0 +1,43 @@
+This version of Hercules is a modification by Paul
+Edwards to standard Hercules 3.07 from:
+
+http://www.hercules-390.org
+
+to support the S/380 architecture.
+
+If you wish to recreate the source code (Unix users
+must do this), you will need to go there and download 
+the Hercules 3.07 source code and then apply the patch 
+provided here (hercules380*.txt) using the Unix "patch" 
+utility (or equivalent). E.g. if you are in the same
+directory as this readme file, you would use a command
+something like this:
+
+patch -p 1 <hercules380...txt
+
+Also see the COPYRIGHT file and go to that HTML page
+to read the license agreement.
+
+
+Tip for people needing source.  The additional source
+you need can be obtained from here:
+http://www.pcre.org/
+http://www.zlib.net/
+http://www.bzip.org/
+
+Note that as of Hercules/380 3.06 v 6.0, choosing S/370
+will have no effect - it will be S/380. This is until
+Fish's Hercgui is updated to recognize S/380. If you
+require a plain S/370, just run normal Hercules. Obviously
+you will lose the various enhancements such as extra
+TDF tape formats if you do that.
+
+Also check this if you are recompiling from source on
+Windows and don't have access to VC2005:
+
+http://www.softdevlabs.com/Hercules/hercules-msvc-build.html
+
+This version of Hercules/380 only has the extra BSM/BASSM
+instructions enabled, plus the ones officially designated (by
+the Hercules team) as being activatable, to provide 
+a stable development platform.
