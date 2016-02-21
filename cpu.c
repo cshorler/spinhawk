@@ -1880,6 +1880,12 @@ jump_ebxx:
  #include "cpu.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "cpu.c"
+#endif
+
 /*-------------------------------------------------------------------*/
 /* Copy program status word                                          */
 /*-------------------------------------------------------------------*/

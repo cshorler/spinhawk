@@ -3848,4 +3848,10 @@ BYTE    i1, i2;                         /* Immediate fields          */
  #include "general3.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "general3.c"
+#endif
+
 #endif /*!defined(_GEN_ARCH)*/

@@ -86,6 +86,11 @@
  #include "dyninst.c"
 #endif 
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "dyninst.c"
+#endif
 
 static zz_func save_table[256][GEN_MAXARCH];
 static zz_func save_01xx[256][GEN_MAXARCH];

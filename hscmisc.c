@@ -1305,6 +1305,11 @@ REGS   *regs;                           /* Copied regs               */
  #include "hscmisc.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "hscmisc.c"
+#endif
 
 /*-------------------------------------------------------------------*/
 /* Wrappers for architecture-dependent functions                     */

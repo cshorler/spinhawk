@@ -65,6 +65,18 @@
  #undef   _GEN_ARCH
 #endif
 
+#if defined(_ARCHMODE3)
+ #define  _GEN_ARCH _ARCHMODE3
+ #include "bldcfg.c"
+ #undef   _GEN_ARCH
+#endif
+
+#if defined(_ARCHMODE4)
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "bldcfg.c"
+ #undef   _GEN_ARCH
+#endif
+
 typedef struct _DEVARRAY
 {
     U16 cuu1;

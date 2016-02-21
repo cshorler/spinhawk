@@ -274,4 +274,10 @@ void renew_wrapping_keys(void)
  #include "crypto.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "crypto.c"
+#endif
+
 #endif /*!defined(_GEN_ARCH)*/

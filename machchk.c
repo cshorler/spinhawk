@@ -272,6 +272,12 @@ RADR    fsta = 0;
  #include "machchk.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "machchk.c"
+#endif
+
 #if !defined(NO_SIGABEND_HANDLER)
 void sigabend_handler (int signo)
 {

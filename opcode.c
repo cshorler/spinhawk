@@ -20,14 +20,20 @@
 
 #if !defined(_GEN_ARCH)
 
+#if defined(_ARCHMODE2)
+ #define  _GEN_ARCH _ARCHMODE2
+ #include "opcode.c"
+ #undef   _GEN_ARCH
+#endif
+
 #if defined(_ARCHMODE3)
  #define  _GEN_ARCH _ARCHMODE3
  #include "opcode.c"
  #undef   _GEN_ARCH
 #endif
 
-#if defined(_ARCHMODE2)
- #define  _GEN_ARCH _ARCHMODE2
+#if defined(_ARCHMODE4)
+ #define  _GEN_ARCH _ARCHMODE4
  #include "opcode.c"
  #undef   _GEN_ARCH
 #endif

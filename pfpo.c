@@ -576,4 +576,10 @@ DEF_INST(perform_floating_point_operation)
   #include "pfpo.c"
 #endif
 
+#if defined(_ARCHMODE4)
+  #undef   _GEN_ARCH
+  #define  _GEN_ARCH _ARCHMODE4
+  #include "pfpo.c"
+#endif
+
 #endif /*!defined(_GEN_ARCH)*/

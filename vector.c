@@ -932,4 +932,10 @@ VADR    effective_addr2;                /* Effective address         */
  #include "vector.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "vector.c"
+#endif
+
 #endif /*!defined(_GEN_ARCH)*/

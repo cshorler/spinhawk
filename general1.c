@@ -4688,4 +4688,10 @@ U32     n;                              /* 32-bit operand values     */
  #include "general1.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "general1.c"
+#endif
+
 #endif /*!defined(_GEN_ARCH)*/

@@ -5079,6 +5079,12 @@ int             lmd;                    /* Leftmost digit            */
  #include "dfp.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "dfp.c"
+#endif
+
 #endif /*!defined(_GEN_ARCH)*/
 
 

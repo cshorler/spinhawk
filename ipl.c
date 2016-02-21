@@ -500,6 +500,12 @@ int ARCH_DEP(initial_cpu_reset) (REGS *regs)
  #include "ipl.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "ipl.c"
+#endif
+
 /*********************************************************************/
 /*             Externally Initiated Functions...                     */
 /*********************************************************************/

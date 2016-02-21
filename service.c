@@ -1923,4 +1923,10 @@ BYTE            *xstmap;                /* Xstore bitmap, zero means
  #include "service.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "service.c"
+#endif
+
 #endif /*!defined(_GEN_ARCH)*/

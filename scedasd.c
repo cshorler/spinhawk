@@ -829,6 +829,11 @@ U16 evd_len;
  #include "scedasd.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "scedasd.c"
+#endif
 
 /*-------------------------------------------------------------------*/
 /*  Service Processor Load    (load/ipl from the specified file)     */

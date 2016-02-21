@@ -1708,4 +1708,10 @@ VADR    effective_addr2;                /* Effective address         */
  #include "vm.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "vm.c"
+#endif
+
 #endif /*!defined(_GEN_ARCH)*/

@@ -3755,6 +3755,12 @@ DEVLIST *pZoneDevs = NULL;              /* devices in requested zone */
  #include "channel.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "channel.c"
+#endif
+
 
 int device_attention (DEVBLK *dev, BYTE unitstat)
 {

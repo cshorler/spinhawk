@@ -29,6 +29,12 @@
  #include "vstore.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "vstore.c"
+#endif
+
 #endif /*!defined(_GEN_ARCH)*/
 
 #endif /*!defined(OPTION_NO_INLINE_VSTORE)*/

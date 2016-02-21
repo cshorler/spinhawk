@@ -2009,4 +2009,9 @@ static int ARCH_DEP(cmpsc_vstore)(struct ec *ec, BYTE *buf, unsigned len)
     #define _GEN_ARCH _ARCHMODE3
     #include "cmpsc.c"
   #endif /* #ifdef _ARCHMODE3 */
+  #ifdef _ARCHMODE4
+    #undef _GEN_ARCH
+    #define _GEN_ARCH _ARCHMODE4
+    #include "cmpsc.c"
+  #endif /* #ifdef _ARCHMODE4 */
 #endif /* #ifndef _GEN_ARCH */

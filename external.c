@@ -583,6 +583,11 @@ PSA     *sspsa;                         /* -> Store status area      */
  #include "external.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "external.c"
+#endif
 
 void store_status (REGS *ssreg, U64 aaddr)
 {

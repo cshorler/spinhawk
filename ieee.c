@@ -4256,6 +4256,12 @@ DEF_INST(divide_integer_bfp_short_reg)
  #include "ieee.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "ieee.c"
+#endif
+
 #endif  /*!defined(_GEN_ARCH) */
 
 /* end of ieee.c */

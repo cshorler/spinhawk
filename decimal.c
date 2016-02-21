@@ -1415,4 +1415,10 @@ BYTE    pack[MAX_DECIMAL_LENGTH];       /* Packed decimal work area  */
  #include "decimal.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "decimal.c"
+#endif
+
 #endif /*!defined(_GEN_ARCH)*/

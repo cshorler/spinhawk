@@ -2883,4 +2883,10 @@ DEF_INST(translate_and_test_reverse_extended)
  #include "general2.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "general2.c"
+#endif
+
 #endif /*!defined(_GEN_ARCH)*/

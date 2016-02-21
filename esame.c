@@ -8870,6 +8870,12 @@ U64     effective_addr2;                /* Effective address         */
  #include "esame.c"
 #endif
 
+#if defined(_ARCHMODE4)
+ #undef   _GEN_ARCH
+ #define  _GEN_ARCH _ARCHMODE4
+ #include "esame.c"
+#endif
+
 #if defined(HAVE_STFL_DATA)
 /*-------------------------------------------------------------------*/
 /* Locate STFL data independent of current architecture mode setting */
