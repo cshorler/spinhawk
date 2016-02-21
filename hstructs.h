@@ -267,7 +267,8 @@ struct REGS {                           /* Processor registers       */
      /* Opcode table pointers                                        */
 
         FUNC    s370_opcode_table[256];
-        FUNC   *s370_opcode_a4xx,
+        FUNC   *s370_opcode_01xx,
+               *s370_opcode_a4xx,
                *s370_opcode_a5xx,
                *s370_opcode_a6xx,
  #if defined(MULTI_BYTE_ASSIST)
@@ -596,6 +597,14 @@ struct SYSBLK {
         int     pcpu;                   /* Tgt CPU panel cmd & displ */
         int     hercprio;               /* Hercules process priority */
         int     todprio;                /* TOD Clock thread priority */
+#if defined(_380)
+        int     s380;                   /* S/380 architecture        */
+        int     mvs_special;            /* special MVS processing    */
+        int     vse_special;            /* special VSE processing    */
+#if VSE_UNPATCHED
+        RADR    vse_real;               /* What VSE really has       */
+#endif
+#endif
         int     cpuprio;                /* CPU thread priority       */
         int     devprio;                /* Device thread priority    */
         TID     httptid;                /* HTTP listener thread id   */
